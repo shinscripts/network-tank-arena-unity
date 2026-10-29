@@ -1,3 +1,4 @@
+using NetworkTankArena.shin;
 using UnityEngine;
 
 namespace NetworkTankArena.Tanks
@@ -6,11 +7,12 @@ namespace NetworkTankArena.Tanks
     [RequireComponent(typeof(CharacterController))]
     public sealed class TankSimulation : MonoBehaviour
     {
-        [SerializeField, Min(0f)] private float moveSpeed = 6f;
-        [SerializeField, Min(0f)] private float turnSpeed = 120f;
-        [SerializeField, Min(0f)] private float turretHeight = 1.35f;
+        [SerializeField] [Min(0f)] private float moveSpeed = 6f;
+        [SerializeField] [Min(0f)] private float turnSpeed = 120f;
+        [SerializeField] [Min(0f)] private float turretHeight = 1.35f;
 
         private CharacterController characterController;
+        private SpeedBoost speedBoost;
 
         public float TurretYaw { get; private set; }
         public Vector3 TurretOrigin => transform.position + Vector3.up * turretHeight;
@@ -18,6 +20,7 @@ namespace NetworkTankArena.Tanks
         private void Awake()
         {
             characterController = GetComponent<CharacterController>();
+            speedBoost = GetComponent<SpeedBoost>();
             TurretYaw = transform.eulerAngles.y;
         }
 
@@ -32,11 +35,12 @@ namespace NetworkTankArena.Tanks
                 return;
 
             intent = intent.Sanitize();
-            float yaw = TankMath.TurnYaw(transform.eulerAngles.y, intent.Turn, turnSpeed, deltaTime);
+            var yaw = TankMath.TurnYaw(transform.eulerAngles.y, intent.Turn, turnSpeed, deltaTime);
             transform.rotation = Quaternion.Euler(0f, yaw, 0f);
-            characterController.Move(TankMath.ForwardDisplacement(yaw, intent.Throttle, moveSpeed, deltaTime));
+            characterController.Move(TankMath.ForwardDisplacement(yaw, intent.Throttle,
+                moveSpeed * speedBoost.Multiplier.Value, deltaTime));
 
-            if (intent.HasAimPoint && TankMath.TryGetAimYaw(TurretOrigin, intent.AimWorldPoint, out float aimYaw))
+            if (intent.HasAimPoint && TankMath.TryGetAimYaw(TurretOrigin, intent.AimWorldPoint, out var aimYaw))
                 TurretYaw = aimYaw;
         }
 
